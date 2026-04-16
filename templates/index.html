@@ -300,7 +300,33 @@
 
     <div class="feed" id="feed"></div>
 
-    <div class="footer">Say "Hey Jarvis" to begin</div>
+    <div class="footer">
+        Say "Hey Jarvis" to begin
+        <span id="voiceToggle" style="float:right; color:#4fc3f7; cursor:pointer; padding:0 8px;">Voice</span>
+    </div>
+
+    <!-- Voice Settings Panel -->
+    <div id="voicePanel" style="display:none; position:fixed; bottom:0; left:0; right:0; background:#0d1520; border-top:1px solid #1a3a5c; padding:16px; z-index:150;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <span style="color:#4fc3f7; font-size:13px; font-weight:600; letter-spacing:2px;">VOICE SETTINGS</span>
+            <span id="voiceClose" style="color:#3a5a7a; cursor:pointer; font-size:18px;">x</span>
+        </div>
+        <div style="margin-bottom:10px;">
+            <label style="font-size:11px; color:#3a5a7a;">Voice</label>
+            <select id="voiceSelect" style="width:100%; background:#132030; border:1px solid #1a3a5c; color:#b8d4f0; padding:8px; border-radius:8px; margin-top:4px; font-size:13px;"></select>
+        </div>
+        <div style="display:flex; gap:12px;">
+            <div style="flex:1;">
+                <label style="font-size:11px; color:#3a5a7a;">Pitch: <span id="pitchVal">0.8</span></label>
+                <input type="range" id="pitchRange" min="0.1" max="2" step="0.1" value="0.8" style="width:100%; accent-color:#4fc3f7;">
+            </div>
+            <div style="flex:1;">
+                <label style="font-size:11px; color:#3a5a7a;">Speed: <span id="rateVal">0.95</span></label>
+                <input type="range" id="rateRange" min="0.5" max="2" step="0.05" value="0.95" style="width:100%; accent-color:#4fc3f7;">
+            </div>
+        </div>
+        <button id="voiceTest" style="width:100%; margin-top:10px; padding:10px; background:#132030; border:1px solid #1a3a5c; color:#4fc3f7; border-radius:8px; font-size:13px; cursor:pointer;">Test Voice</button>
+    </div>
 
     <!-- Sleep overlay (black screen when idle — mic still works) -->
     <div class="sleep-overlay" id="sleepOverlay">
@@ -494,6 +520,90 @@
             // Ignore speech during processing/speaking states
         }
 
+        // ── Voice Settings ──
+        let selectedVoice = null;
+        let voicePitch = 0.8;
+        let voiceRate = 0.95;
+
+        const voicePanel = document.getElementById('voicePanel');
+        const voiceToggle = document.getElementById('voiceToggle');
+        const voiceClose = document.getElementById('voiceClose');
+        const voiceSelect = document.getElementById('voiceSelect');
+        const pitchRange = document.getElementById('pitchRange');
+        const rateRange = document.getElementById('rateRange');
+        const pitchVal = document.getElementById('pitchVal');
+        const rateVal = document.getElementById('rateVal');
+        const voiceTest = document.getElementById('voiceTest');
+
+        voiceToggle.addEventListener('click', () => {
+            voicePanel.style.display = voicePanel.style.display === 'none' ? 'block' : 'none';
+            populateVoices();
+        });
+        voiceClose.addEventListener('click', () => voicePanel.style.display = 'none');
+
+        pitchRange.addEventListener('input', () => { voicePitch = parseFloat(pitchRange.value); pitchVal.textContent = voicePitch; });
+        rateRange.addEventListener('input', () => { voiceRate = parseFloat(rateRange.value); rateVal.textContent = voiceRate; });
+        voiceTest.addEventListener('click', () => {
+            const u = new SpeechSynthesisUtterance('All systems operational, sir. Jarvis at your service.');
+            u.pitch = voicePitch;
+            u.rate = voiceRate;
+            if (selectedVoice) u.voice = selectedVoice;
+            speechSynthesis.cancel();
+            speechSynthesis.speak(u);
+        });
+
+        voiceSelect.addEventListener('change', () => {
+            const voices = speechSynthesis.getVoices();
+            selectedVoice = voices.find(v => v.name === voiceSelect.value) || null;
+        });
+
+        function populateVoices() {
+            const voices = speechSynthesis.getVoices();
+            voiceSelect.innerHTML = '';
+            // English voices first
+            const enVoices = voices.filter(v => v.lang.startsWith('en'));
+            const otherVoices = voices.filter(v => !v.lang.startsWith('en'));
+            [...enVoices, ...otherVoices].forEach(v => {
+                const opt = document.createElement('option');
+                opt.value = v.name;
+                opt.textContent = `${v.name} (${v.lang})`;
+                if (selectedVoice && selectedVoice.name === v.name) opt.selected = true;
+                voiceSelect.appendChild(opt);
+            });
+        }
+
+        function pickBestVoice() {
+            const voices = speechSynthesis.getVoices();
+            if (!voices.length) return;
+
+            // Priority list for Jarvis-like deep male voice
+            const preferred = [
+                'Google UK English Male',
+                'Daniel',
+                'Google US English',
+                'Microsoft David',
+                'Alex',
+                'Rishi',
+                'english',
+            ];
+
+            for (const name of preferred) {
+                const v = voices.find(v => v.name.toLowerCase().includes(name.toLowerCase()) && v.lang.startsWith('en'));
+                if (v) { selectedVoice = v; return; }
+            }
+
+            // Fallback: first English voice that's not female
+            selectedVoice = voices.find(v =>
+                v.lang.startsWith('en') && !v.name.toLowerCase().includes('female')
+            ) || voices.find(v => v.lang.startsWith('en')) || voices[0];
+        }
+
+        // Init voices
+        if (speechSynthesis.onvoiceschanged !== undefined) {
+            speechSynthesis.onvoiceschanged = () => { pickBestVoice(); populateVoices(); };
+        }
+        pickBestVoice();
+
         // ── Text-to-Speech ──
         function speak(text, onDone) {
             if (!text) { if (onDone) onDone(); return; }
@@ -505,19 +615,11 @@
             try { recognition.stop(); } catch(e) {}
 
             const utterance = new SpeechSynthesisUtterance(text);
-            utterance.rate = 1.0;
-            utterance.pitch = 0.9;
+            utterance.rate = voiceRate;
+            utterance.pitch = voicePitch;
             utterance.volume = 1.0;
 
-            // Try to pick an English male voice
-            const voices = speechSynthesis.getVoices();
-            const preferred = voices.find(v =>
-                v.lang.startsWith('en') && v.name.toLowerCase().includes('male')
-            ) || voices.find(v =>
-                v.lang.startsWith('en') && !v.name.toLowerCase().includes('female')
-            ) || voices.find(v => v.lang.startsWith('en'));
-
-            if (preferred) utterance.voice = preferred;
+            if (selectedVoice) utterance.voice = selectedVoice;
 
             utterance.onend = () => {
                 isSpeaking = false;
@@ -575,10 +677,7 @@
             startRecognition();
         });
 
-        // Pre-load voices
-        if (speechSynthesis.onvoiceschanged !== undefined) {
-            speechSynthesis.onvoiceschanged = () => speechSynthesis.getVoices();
-        }
+        // Voices are loaded via voiceschanged event above
 
         // ── Timer & Reminder ──
         function startTimer(seconds) {
