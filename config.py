@@ -25,7 +25,7 @@ SERVER_PORT = int(os.environ.get("PORT", 8000))
 # GEMINI SETTINGS
 # ═══════════════════════════════════════════
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")  # Set in .env or as environment variable
-GEMINI_MODEL = "gemini-2.5-flash"  # flash = faster + 15 RPM free (pro = only 5 RPM)
+GEMINI_MODEL = "gemini-2.5-pro"
 
 # ═══════════════════════════════════════════
 # TUYA SMART HOME (SmartLife devices)
