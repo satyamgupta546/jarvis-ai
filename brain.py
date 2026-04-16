@@ -1,5 +1,6 @@
 """Jarvis AI Brain - Powered by Google Gemini"""
 
+import time
 import threading
 from google import genai
 from config import GEMINI_API_KEY, GEMINI_MODEL, BOT_NAME
@@ -38,7 +39,6 @@ SMART HOME DEVICES:
 {devices}
 - [DEVICE: device_id, ON] or [DEVICE: device_id, OFF]
 - For "all lights off" → use multiple [DEVICE: ...] tags
-- For "good night" routine → turn off all lights and fans
 
 TIMERS & REMINDERS (handled on phone):
 - [TIMER: seconds] — e.g. [TIMER: 300] for 5 minutes
@@ -50,33 +50,13 @@ MACBOOK (when desktop agent is connected):
 - [OPEN_APP: app name]
 - [SYSTEM_INFO]
 
-══ ROUTINES ══
-When user says "good morning":
-→ Greet warmly + [WEATHER] + [NEWS] + turn on relevant lights
-When user says "good night":
-→ Wish good night + turn off ALL lights and fans
-When user says "movie time":
-→ Turn off lights + suggest something fun
-
 ══ RULES ══
 - Keep responses concise (1-3 sentences spoken).
 - Command tags go at the VERY END, never in spoken text.
-- For weather/news: just include the tag. You'll receive the data in a follow-up message — then present it naturally.
-- For timers: convert to seconds. "5 minutes" = [TIMER: 300], "1 hour" = [TIMER: 3600]
-- For reminders: convert to minutes. "30 minutes mein yaad dila dena" = [REMINDER: 30, text]
-- Questions, jokes, math, translations, definitions, recipes, facts — answer directly from your knowledge.
-- For cricket scores, stock prices, or any live data — use [WEB_SEARCH: query].
-- Hindi/Hinglish input: respond in English but understand Hindi commands.
-
-══ EXAMPLES ══
-User: "bedroom light off karo" → Sure sir. [DEVICE: bedroom_light, OFF]
-User: "play Arijit Singh" → Playing Arijit Singh for you, sir. [PLAY_SONG: Arijit Singh]
-User: "weather kaisa hai?" → Let me check, sir. [WEATHER]
-User: "5 minute ka timer laga do" → Timer set for 5 minutes, sir. [TIMER: 300]
-User: "good morning" → Good morning sir! Let me get your briefing. [WEATHER] [NEWS] [DEVICE: bedroom_light, ON]
-User: "good night" → Good night sir. Shutting everything down. [DEVICE: bedroom_light, OFF] [DEVICE: hall_light, OFF] [DEVICE: bedroom_fan, OFF] [DEVICE: hall_fan, OFF]
-User: "100 ka 18% GST kitna hoga?" → 18% GST on 100 would be 18 rupees, making the total 118 rupees, sir.
-User: "tell me a joke" → (tells a joke, no command tags needed)
+- For weather/news: just include the tag. You'll receive the data in a follow-up — then present it naturally.
+- For timers: convert to seconds. "5 minutes" = [TIMER: 300]
+- Questions, jokes, math, translations, recipes — answer directly.
+- For live data (cricket, stocks) — use [WEB_SEARCH: query].
 """
 
 
@@ -84,39 +64,62 @@ class JarvisBrain:
     def __init__(self):
         self.model_name = GEMINI_MODEL
         self._system_prompt = build_system_prompt()
-        self._chat = client.chats.create(
-            model=GEMINI_MODEL,
-            config={"system_instruction": self._system_prompt},
-        )
+        self._chat = None
         self._lock = threading.Lock()
+        self._init_chat()
+
+    def _init_chat(self):
+        """Create a new chat session."""
+        try:
+            self._chat = client.chats.create(
+                model=GEMINI_MODEL,
+                config={"system_instruction": self._system_prompt},
+            )
+        except Exception as e:
+            print(f"[Brain] Chat init error: {e}")
+            self._chat = None
 
     def think(self, user_input: str) -> str:
-        import time
         with self._lock:
-            # Retry up to 3 times on rate limit
-            for attempt in range(3):
+            # If chat not initialized, try again
+            if self._chat is None:
+                self._init_chat()
+            if self._chat is None:
+                return "Sir, Gemini se connect nahi ho pa raha. Thodi der mein try karo."
+
+            # Retry with exponential backoff
+            delays = [2, 5, 10, 20, 30]
+            for attempt, delay in enumerate(delays):
                 try:
                     response = self._chat.send_message(user_input)
                     return response.text
                 except Exception as e:
                     err = str(e).lower()
-                    if "api key" in err or "authenticate" in err:
-                        return "Sir, API key invalid lag rahi hai. Config check karo."
-                    if ("quota" in err or "limit" in err or "429" in err or "resource" in err):
-                        if attempt < 2:
-                            time.sleep(4)  # Wait 4 seconds and retry
+                    print(f"[Brain] Attempt {attempt+1} error: {e}")
+
+                    if "api key" in err or "authenticate" in err or "permission" in err:
+                        return "Sir, API key mein issue hai. Check karo config."
+
+                    # Rate limit / quota / resource exhausted — retry
+                    if any(word in err for word in ["quota", "limit", "429", "resource", "exhausted", "rate", "capacity"]):
+                        if attempt < len(delays) - 1:
+                            print(f"[Brain] Rate limited. Waiting {delay}s before retry...")
+                            time.sleep(delay)
                             continue
-                        return "Sir, thodi der mein try karo. API busy hai abhi."
+                        return "Sir, Gemini API abhi busy hai. 1 minute wait karo phir try karo."
+
+                    # Other error — try once more with fresh chat
+                    if attempt == 0:
+                        self._init_chat()
+                        continue
                     return f"Sir, kuch gadbad ho gayi: {e}"
+
             return "Sir, response nahi aa raha. Thodi der baad try karo."
 
     def reset_memory(self):
         with self._lock:
             self._system_prompt = build_system_prompt()
-            self._chat = client.chats.create(
-                model=GEMINI_MODEL,
-                config={"system_instruction": self._system_prompt},
-            )
+            self._init_chat()
 
     def is_available(self) -> bool:
         try:
