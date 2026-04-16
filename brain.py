@@ -91,17 +91,24 @@ class JarvisBrain:
         self._lock = threading.Lock()
 
     def think(self, user_input: str) -> str:
+        import time
         with self._lock:
-            try:
-                response = self._chat.send_message(user_input)
-                return response.text
-            except Exception as e:
-                err = str(e).lower()
-                if "api key" in err or "authenticate" in err:
-                    return "My API key seems invalid, sir."
-                if "quota" in err or "limit" in err:
-                    return "I've hit the API rate limit, sir. Please wait a moment."
-                return f"Something went wrong, sir: {e}"
+            # Retry up to 3 times on rate limit
+            for attempt in range(3):
+                try:
+                    response = self._chat.send_message(user_input)
+                    return response.text
+                except Exception as e:
+                    err = str(e).lower()
+                    if "api key" in err or "authenticate" in err:
+                        return "Sir, API key invalid lag rahi hai. Config check karo."
+                    if ("quota" in err or "limit" in err or "429" in err or "resource" in err):
+                        if attempt < 2:
+                            time.sleep(4)  # Wait 4 seconds and retry
+                            continue
+                        return "Sir, thodi der mein try karo. API busy hai abhi."
+                    return f"Sir, kuch gadbad ho gayi: {e}"
+            return "Sir, response nahi aa raha. Thodi der baad try karo."
 
     def reset_memory(self):
         with self._lock:
