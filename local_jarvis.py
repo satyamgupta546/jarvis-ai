@@ -92,10 +92,49 @@ class LocalJarvis:
 
     def speak(self, text: str):
         print(f"\n🔊 {BOT_NAME}: {text}")
-        # Use macOS native 'say' command — much better voice than pyttsx3
-        # Daniel = British male (Jarvis-like), Aman = Indian English
-        subprocess.run(["say", "-v", "Daniel", "-r", "190", text],
-                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        # Split into sentences — pause between each to check for interrupts
+        sentences = re.split(r'(?<=[.!?।])\s+', text)
+        if not sentences:
+            sentences = [text]
+
+        for sentence in sentences:
+            if not sentence.strip():
+                continue
+            # Start TTS as background process (interruptible)
+            self._tts_process = subprocess.Popen(
+                ["say", "-v", "Daniel", "-r", "190", sentence],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+            )
+            # Wait for TTS to finish, but check for interrupt
+            while self._tts_process.poll() is None:
+                time.sleep(0.1)
+
+            # Brief mic check between sentences for interrupt
+            if len(sentences) > 1 and self._check_interrupt():
+                print("[Interrupted by user!]")
+                return
+
+    def _check_interrupt(self) -> bool:
+        """Quick mic check (0.5s) for interrupt words."""
+        try:
+            with self.mic as source:
+                audio = self.recognizer.listen(source, timeout=0.5, phrase_time_limit=1.5)
+            text = self.recognizer.recognize_google(audio).lower()
+            print(f"[Interrupt check heard: '{text}']")
+            interrupt_words = ["ruko", "wait", "stop", "bas", "ruk", "hold on",
+                              "ek minute", "sun", "chup", "jarvis", "jarves", "javis"]
+            if any(w in text for w in interrupt_words):
+                # If user said Jarvis + new command, save it for processing
+                self._interrupt_text = text
+                return True
+        except (sr.WaitTimeoutError, sr.UnknownValueError, sr.RequestError):
+            pass
+        return False
+
+    def stop_speaking(self):
+        """Force stop TTS immediately."""
+        if hasattr(self, '_tts_process') and self._tts_process and self._tts_process.poll() is None:
+            self._tts_process.kill()
 
     def listen(self, timeout=None, phrase_limit=15) -> str | None:
         with self.mic as source:
@@ -141,6 +180,7 @@ class LocalJarvis:
             return f"Error: {e}"
 
     def process(self, command: str):
+        self._interrupt_text = None  # Reset interrupt buffer
         prefix = "[OFFICE MODE] " if self.mode == "office" else ""
         response = self.think(prefix + command)
 
@@ -151,6 +191,20 @@ class LocalJarvis:
 
         if clean:
             self.speak(clean)
+
+        # If user interrupted with a new command, process it
+        if self._interrupt_text:
+            found, new_cmd = self.check_wake(self._interrupt_text)
+            if found and new_cmd:
+                self._interrupt_text = None
+                self.process(new_cmd)
+                return
+            elif not found:
+                # User said "ruko/stop" without new command — just listen
+                self._interrupt_text = None
+                self.speak("Haan sir, bolo.")
+                self._listen_cmd()
+                return
 
         # Execute Claude Code if needed
         for task in claude_tasks:
