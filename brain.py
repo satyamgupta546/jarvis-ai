@@ -1,13 +1,13 @@
-"""Jarvis AI Brain - Powered by Google Gemini"""
+"""Jarvis AI Brain - Powered by Claude (Anthropic)"""
 
 import time
 import threading
-from google import genai
-from config import GEMINI_API_KEY, GEMINI_MODEL, BOT_NAME
+import anthropic
+from config import ANTHROPIC_API_KEY, CLAUDE_MODEL, BOT_NAME
 from smart_home import get_devices_summary
 from office import get_all_projects_summary
 
-client = genai.Client(api_key=GEMINI_API_KEY)
+client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
 
 def build_system_prompt() -> str:
@@ -65,7 +65,7 @@ MACBOOK (when desktop agent is connected):
 ══ RULES ══
 - Keep responses concise (1-3 sentences spoken).
 - Command tags go at the VERY END, never in spoken text.
-- For weather/news: just include the tag. You'll receive the data in a follow-up — then present it naturally.
+- For weather/news/slack: just include the tag. You'll receive the data in a follow-up — then present it naturally.
 - For timers: convert to seconds. "5 minutes" = [TIMER: 300]
 - Questions, jokes, math, translations, recipes — answer directly.
 - For live data (cricket, stocks) — use [WEB_SEARCH: query].
@@ -74,55 +74,44 @@ MACBOOK (when desktop agent is connected):
 
 class JarvisBrain:
     def __init__(self):
-        self.model_name = GEMINI_MODEL
+        self.model_name = CLAUDE_MODEL
         self._system_prompt = build_system_prompt()
-        self._chat = None
+        self._messages = []  # Conversation history
         self._lock = threading.Lock()
-        self._init_chat()
-
-    def _init_chat(self):
-        """Create a new chat session."""
-        try:
-            self._chat = client.chats.create(
-                model=GEMINI_MODEL,
-                config={"system_instruction": self._system_prompt},
-            )
-        except Exception as e:
-            print(f"[Brain] Chat init error: {e}")
-            self._chat = None
 
     def think(self, user_input: str) -> str:
         with self._lock:
-            # If chat not initialized, try again
-            if self._chat is None:
-                self._init_chat()
-            if self._chat is None:
-                return "Sir, Gemini se connect nahi ho pa raha. Thodi der mein try karo."
+            self._messages.append({"role": "user", "content": user_input})
 
-            # Retry with exponential backoff
-            delays = [2, 5, 10, 20, 30]
+            # Keep last 40 messages to stay within context
+            if len(self._messages) > 40:
+                self._messages = self._messages[-40:]
+
+            delays = [2, 5, 10, 20]
             for attempt, delay in enumerate(delays):
                 try:
-                    response = self._chat.send_message(user_input)
-                    return response.text
+                    response = client.messages.create(
+                        model=self.model_name,
+                        max_tokens=1024,
+                        system=self._system_prompt,
+                        messages=self._messages,
+                    )
+                    reply = response.content[0].text
+                    self._messages.append({"role": "assistant", "content": reply})
+                    return reply
+
+                except anthropic.RateLimitError:
+                    if attempt < len(delays) - 1:
+                        time.sleep(delay)
+                        continue
+                    return "Sir, API abhi busy hai. Thodi der mein try karo."
+
+                except anthropic.AuthenticationError:
+                    return "Sir, API key mein issue hai. ANTHROPIC_API_KEY check karo."
+
                 except Exception as e:
-                    err = str(e).lower()
-                    print(f"[Brain] Attempt {attempt+1} error: {e}")
-
-                    if "api key" in err or "authenticate" in err or "permission" in err:
-                        return "Sir, API key mein issue hai. Check karo config."
-
-                    # Rate limit / quota / resource exhausted — retry
-                    if any(word in err for word in ["quota", "limit", "429", "resource", "exhausted", "rate", "capacity"]):
-                        if attempt < len(delays) - 1:
-                            print(f"[Brain] Rate limited. Waiting {delay}s before retry...")
-                            time.sleep(delay)
-                            continue
-                        return "Sir, Gemini API abhi busy hai. 1 minute wait karo phir try karo."
-
-                    # Other error — try once more with fresh chat
-                    if attempt == 0:
-                        self._init_chat()
+                    if attempt < 1:
+                        time.sleep(2)
                         continue
                     return f"Sir, kuch gadbad ho gayi: {e}"
 
@@ -131,14 +120,14 @@ class JarvisBrain:
     def reset_memory(self):
         with self._lock:
             self._system_prompt = build_system_prompt()
-            self._init_chat()
+            self._messages = []
 
     def is_available(self) -> bool:
         try:
-            client.models.generate_content(
+            client.messages.create(
                 model=self.model_name,
-                contents="hi",
-                config={"max_output_tokens": 5},
+                max_tokens=5,
+                messages=[{"role": "user", "content": "hi"}],
             )
             return True
         except Exception:

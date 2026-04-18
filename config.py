@@ -22,10 +22,10 @@ SERVER_HOST = "0.0.0.0"
 SERVER_PORT = int(os.environ.get("PORT", 8000))
 
 # ═══════════════════════════════════════════
-# GEMINI SETTINGS
+# CLAUDE (ANTHROPIC) SETTINGS
 # ═══════════════════════════════════════════
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")  # Set in .env or as environment variable
-GEMINI_MODEL = "gemini-2.5-pro"
+ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
+CLAUDE_MODEL = "claude-sonnet-4-20250514"  # Options: claude-sonnet-4-20250514, claude-opus-4-20250514
 
 # ═══════════════════════════════════════════
 # TUYA SMART HOME (SmartLife devices)

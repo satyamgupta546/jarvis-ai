@@ -1,5 +1,5 @@
-# Gemini AI brain
-google-genai>=1.0.0
+# Claude AI brain
+anthropic>=0.40.0
 
 # Web server
 fastapi>=0.110.0
