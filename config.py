@@ -22,10 +22,15 @@ SERVER_HOST = "0.0.0.0"
 SERVER_PORT = int(os.environ.get("PORT", 8000))
 
 # ═══════════════════════════════════════════
-# CLAUDE (ANTHROPIC) SETTINGS
+# GEMINI (for fast voice responses)
 # ═══════════════════════════════════════════
-ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
-CLAUDE_MODEL = "claude-sonnet-4-20250514"  # Options: claude-sonnet-4-20250514, claude-opus-4-20250514
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+GEMINI_MODEL = "gemini-2.5-flash"  # Fast + 15 RPM free
+
+# ═══════════════════════════════════════════
+# CLAUDE CODE CLI (for coding/heavy tasks — uses your Max plan)
+# ═══════════════════════════════════════════
+CLAUDE_CLI_PATH = os.environ.get("CLAUDE_CLI_PATH", "claude")  # Path to claude CLI
 
 # ═══════════════════════════════════════════
 # TUYA SMART HOME (SmartLife devices)

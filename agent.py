@@ -66,6 +66,9 @@ def handle_command(data: dict) -> dict:
         elif cmd_type == "create_project":
             return create_project(request_id, data["name"], data.get("files", {}))
 
+        elif cmd_type == "claude_code":
+            return run_claude_code(request_id, data["prompt"], data.get("cwd"))
+
         else:
             return {"id": request_id, "status": "error", "error": f"Unknown command: {cmd_type}"}
 
@@ -213,6 +216,35 @@ def create_project(request_id: str, name: str, files: dict) -> dict:
         "path": base,
         "files_created": created,
     }
+
+
+def run_claude_code(request_id: str, prompt: str, cwd: str = None) -> dict:
+    """Run Claude Code CLI with a prompt. Uses the user's Max plan — no API credits."""
+    cwd = os.path.expanduser(cwd) if cwd else os.path.expanduser("~/Desktop/code")
+
+    try:
+        result = subprocess.run(
+            ["claude", "-p", "--output-format", "text", prompt],
+            capture_output=True, text=True,
+            timeout=300,  # 5 min timeout for coding tasks
+            cwd=cwd,
+        )
+        output = result.stdout[-10000:] if result.stdout else ""
+        error = result.stderr[-3000:] if result.stderr else ""
+
+        return {
+            "id": request_id,
+            "status": "ok" if result.returncode == 0 else "error",
+            "output": output,
+            "stderr": error,
+            "returncode": result.returncode,
+        }
+    except subprocess.TimeoutExpired:
+        return {"id": request_id, "status": "error", "error": "Claude Code timed out (5 min)"}
+    except FileNotFoundError:
+        return {"id": request_id, "status": "error", "error": "Claude Code CLI not found. Install: npm install -g @anthropic-ai/claude-code"}
+    except Exception as e:
+        return {"id": request_id, "status": "error", "error": str(e)}
 
 
 def get_system_info(request_id: str) -> dict:

@@ -1,152 +1,144 @@
-"""Jarvis AI Brain - Powered by Claude (Anthropic)"""
+"""Jarvis AI Brain - Hybrid: Gemini Flash (voice) + Claude Code CLI (coding)"""
 
 import time
 import threading
-import anthropic
-from config import ANTHROPIC_API_KEY, CLAUDE_MODEL, BOT_NAME
+from google import genai
+from config import GEMINI_API_KEY, GEMINI_MODEL, BOT_NAME
 from smart_home import get_devices_summary
 from office import get_all_projects_summary
 
-client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+client = genai.Client(api_key=GEMINI_API_KEY)
 
 
 def build_system_prompt() -> str:
     devices = get_devices_summary()
     projects = get_all_projects_summary()
 
-    return f"""You are {BOT_NAME}, a highly intelligent AI home assistant — like Alexa but smarter, inspired by Jarvis from Iron Man.
+    return f"""You are {BOT_NAME}, a highly intelligent AI home + office assistant.
 You are helpful, witty, and slightly formal. Address the user as "sir" occasionally.
 
-LANGUAGE: The user speaks Hinglish (mix of Hindi + English). You MUST reply in the SAME style — Hinglish.
-Example: "Sir, abhi Delhi mein 38 degree hai, kaafi garmi hai. Kal bhi same rahega."
-Do NOT reply in pure English or pure Hindi. Match the user's casual Hinglish tone.
-Keep it natural, like a smart friend talking — not robotic.
+LANGUAGE: Reply in Hinglish (Hindi + English mix). Natural, conversational tone.
 
 ══ COMMAND TAGS ══
-Include these at the END of your response (after spoken words). NEVER speak the tags aloud.
+Include at END of response (after spoken words). NEVER speak tags aloud.
 
 MEDIA:
-- [PLAY_SONG: song/artist name] — plays on YouTube
-- [RADIO: genre] — genres: bollywood, lofi, english, hindi, news, devotional
-- [PLAY_STORE: app name] — opens Play Store
+- [PLAY_SONG: name] — YouTube
+- [RADIO: genre] — bollywood, lofi, english, hindi, news, devotional
+- [PLAY_STORE: app]
 
-INFORMATION (server will fetch real-time data and you'll get it in a follow-up):
-- [WEATHER] or [WEATHER: city name] — current weather + forecast
-- [NEWS] or [NEWS: topic] — latest headlines
-- [WEB_SEARCH: query] — Google search
-- [OPEN_URL: full url] — open any website
-- [GET_TIME] — current time
+INFORMATION (server fetches, you get data in follow-up):
+- [WEATHER] or [WEATHER: city]
+- [NEWS] or [NEWS: topic]
+- [WEB_SEARCH: query]
+- [OPEN_URL: url]
+- [GET_TIME]
 
-SMART HOME DEVICES:
+SMART HOME:
 {devices}
-- [DEVICE: device_id, ON] or [DEVICE: device_id, OFF]
-- For "all lights off" → use multiple [DEVICE: ...] tags
+- [DEVICE: device_id, ON/OFF]
 
-TIMERS & REMINDERS (handled on phone):
-- [TIMER: seconds] — e.g. [TIMER: 300] for 5 minutes
-- [REMINDER: minutes, reminder text] — e.g. [REMINDER: 30, check the oven]
+TIMER/REMINDER:
+- [TIMER: seconds]
+- [REMINDER: minutes, text]
 
-OFFICE / SLACK (for work):
-- [SLACK_READ: channel_name] — read latest messages from a Slack channel
-- [SLACK_SEND: channel_name, message text] — send a message to a Slack channel
-- [SLACK_SEARCH: search query] — search across Slack messages
-- [PROJECT_INFO: project_name] — get details about a specific project
-- [PENDING_TASKS] — list all pending office tasks
+OFFICE/SLACK:
+- [SLACK_READ: channel_name]
+- [SLACK_SEND: channel_name, message]
+- [SLACK_SEARCH: query]
+- [PROJECT_INFO: project_name]
+- [PENDING_TASKS]
 
-SATYAM'S ACTIVE PROJECTS:
+PROJECTS:
 {projects}
 
-MACBOOK (when desktop agent is connected):
-- [READ_FILE: /path/to/file]
-- [LIST_FILES: /path/to/folder]
-- [OPEN_APP: app name]
+MACBOOK:
+- [READ_FILE: /path]
+- [LIST_FILES: /path]
+- [OPEN_APP: name]
 - [SYSTEM_INFO]
 
-CODE & AUTOMATION (via MacBook agent):
-- Write a file: [WRITE_FILE: /full/path/to/file.py] followed by a code block
-- Run a command: [RUN: shell command here]
-- Example: User says "catalog automation ka script banao"
-  → Write the code with [WRITE_FILE: ~/Desktop/code/catalog_auto/main.py]
-  → Then include the code in a ```python block
-  → Then run with [RUN: cd ~/Desktop/code/catalog_auto && python main.py]
-- You CAN write Python, JavaScript, Google Apps Script, shell scripts, etc.
-- Always save files under ~/Desktop/code/
-- For npm/pip projects, include [RUN: pip install ...] or [RUN: npm install] before running
+CODE & AUTOMATION (handled by Claude Code CLI on MacBook):
+- [CLAUDE_CODE: detailed description of what to build/code/automate]
+  Use this when user asks to write code, create scripts, build automation,
+  debug something, create Apps Script, or any coding task.
+  Put the FULL detailed requirement in the tag.
+  Example: [CLAUDE_CODE: Create a Python script that reads Google Sheet X and updates column Y with pricing data from API Z]
 
 ══ MODES ══
-- Messages prefixed with [OFFICE MODE] mean user is in office/work mode.
-  In office mode, prioritize work-related actions: Slack, projects, tasks, code.
-  If user says "kya pending hai" → use [PENDING_TASKS]
-  If user says "product automation mein kya hua" → use [SLACK_READ: product_automation]
-  If user asks about any project → use [PROJECT_INFO: name]
-- Messages WITHOUT prefix = home mode. Normal assistant behavior.
+- [OFFICE MODE] prefix = work mode. Prioritize Slack, projects, tasks, code.
+- No prefix = home mode.
 
 ══ RULES ══
-- Keep responses concise (1-3 sentences spoken).
-- Command tags go at the VERY END, never in spoken text.
-- For weather/news/slack: just include the tag. You'll receive the data in a follow-up — then present it naturally.
-- For timers: convert to seconds. "5 minutes" = [TIMER: 300]
-- Questions, jokes, math, translations, recipes — answer directly.
-- For live data (cricket, stocks) — use [WEB_SEARCH: query].
+- Keep spoken responses concise (1-3 sentences).
+- Tags at END, never spoken.
+- For coding/automation tasks → ALWAYS use [CLAUDE_CODE: ...] tag. Don't write code yourself.
+- For weather/news/slack → include tag, data comes in follow-up.
+- Questions, jokes, math → answer directly.
 """
 
 
 class JarvisBrain:
     def __init__(self):
-        self.model_name = CLAUDE_MODEL
+        self.model_name = GEMINI_MODEL
         self._system_prompt = build_system_prompt()
-        self._messages = []  # Conversation history
+        self._chat = None
         self._lock = threading.Lock()
+        self._init_chat()
+
+    def _init_chat(self):
+        try:
+            self._chat = client.chats.create(
+                model=GEMINI_MODEL,
+                config={"system_instruction": self._system_prompt},
+            )
+        except Exception as e:
+            print(f"[Brain] Chat init error: {e}")
+            self._chat = None
 
     def think(self, user_input: str) -> str:
         with self._lock:
-            self._messages.append({"role": "user", "content": user_input})
-
-            # Keep last 40 messages to stay within context
-            if len(self._messages) > 40:
-                self._messages = self._messages[-40:]
+            if self._chat is None:
+                self._init_chat()
+            if self._chat is None:
+                return "Sir, Gemini se connect nahi ho pa raha. Thodi der mein try karo."
 
             delays = [2, 5, 10, 20]
             for attempt, delay in enumerate(delays):
                 try:
-                    response = client.messages.create(
-                        model=self.model_name,
-                        max_tokens=1024,
-                        system=self._system_prompt,
-                        messages=self._messages,
-                    )
-                    reply = response.content[0].text
-                    self._messages.append({"role": "assistant", "content": reply})
-                    return reply
-
-                except anthropic.RateLimitError:
-                    if attempt < len(delays) - 1:
-                        time.sleep(delay)
-                        continue
-                    return "Sir, API abhi busy hai. Thodi der mein try karo."
-
-                except anthropic.AuthenticationError:
-                    return "Sir, API key mein issue hai. ANTHROPIC_API_KEY check karo."
-
+                    response = self._chat.send_message(user_input)
+                    return response.text
                 except Exception as e:
-                    if attempt < 1:
-                        time.sleep(2)
-                        continue
-                    return f"Sir, kuch gadbad ho gayi: {e}"
+                    err = str(e).lower()
+                    print(f"[Brain] Attempt {attempt+1} error: {e}")
 
-            return "Sir, response nahi aa raha. Thodi der baad try karo."
+                    if "api key" in err or "authenticate" in err:
+                        return "Sir, Gemini API key check karo."
+
+                    if any(w in err for w in ["quota", "limit", "429", "resource", "rate"]):
+                        if attempt < len(delays) - 1:
+                            time.sleep(delay)
+                            continue
+                        return "Sir, API busy hai. Thodi der mein try karo."
+
+                    if attempt == 0:
+                        self._init_chat()
+                        continue
+                    return f"Sir, kuch gadbad: {e}"
+
+            return "Sir, response nahi aa raha."
 
     def reset_memory(self):
         with self._lock:
             self._system_prompt = build_system_prompt()
-            self._messages = []
+            self._init_chat()
 
     def is_available(self) -> bool:
         try:
-            client.messages.create(
+            client.models.generate_content(
                 model=self.model_name,
-                max_tokens=5,
-                messages=[{"role": "user", "content": "hi"}],
+                contents="hi",
+                config={"max_output_tokens": 5},
             )
             return True
         except Exception:

@@ -13,11 +13,11 @@ Usage:
 
 import sys
 import uvicorn
-from config import SERVER_HOST, SERVER_PORT, ANTHROPIC_API_KEY
+from config import SERVER_HOST, SERVER_PORT, GEMINI_API_KEY
 
 def main():
-    if not ANTHROPIC_API_KEY:
-        print("ERROR: Set ANTHROPIC_API_KEY in config.py or as environment variable")
+    if not GEMINI_API_KEY:
+        print("ERROR: Set GEMINI_API_KEY in config.py or as environment variable")
         sys.exit(1)
 
     print("╔══════════════════════════════════════════════╗")

@@ -64,6 +64,10 @@ def parse_commands(response: str) -> list[dict]:
     if "[SYSTEM_INFO]" in response:
         commands.append({"type": "system_info"})
 
+    # [CLAUDE_CODE: prompt] — heavy coding via Claude CLI
+    for prompt in re.findall(r"\[CLAUDE_CODE:\s*(.+?)\]", response, re.DOTALL):
+        commands.append({"type": "claude_code", "prompt": prompt.strip()})
+
     # ── Code / Project creation ──
     for match in re.findall(r"\[WRITE_FILE:\s*(.+?)\]", response):
         commands.append({"type": "write_file", "path": match.strip()})
@@ -120,6 +124,7 @@ def strip_command_tags(text: str) -> str:
         r"\[SLACK_SEARCH:\s*.+?\]",
         r"\[PROJECT_INFO:\s*.+?\]",
         r"\[PENDING_TASKS\]",
+        r"\[CLAUDE_CODE:\s*.+?\]",
         r"\[WRITE_FILE:\s*.+?\]",
         r"\[RUN:\s*.+?\]",
         r"```(?:\w+)?\n.*?```",
@@ -131,7 +136,7 @@ def strip_command_tags(text: str) -> str:
 
 # ── Command categorization ──
 
-DESKTOP_TYPES = {"read_file", "list_files", "open_app", "system_info", "write_file", "run_command"}
+DESKTOP_TYPES = {"read_file", "list_files", "open_app", "system_info", "write_file", "run_command", "claude_code"}
 DATA_FETCH_TYPES = {"weather", "news", "slack_read", "slack_search", "project_info", "pending_tasks"}
 PHONE_TYPES = {"play_song", "radio", "play_store", "web_search", "open_url", "time", "timer", "reminder"}
 DEVICE_TYPES = {"device"}
