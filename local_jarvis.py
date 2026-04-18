@@ -38,13 +38,41 @@ gemini_client = genai.Client(api_key=GEMINI_KEY)
 
 SYSTEM_PROMPT = f"""You are {BOT_NAME}, an AI assistant on the user's MacBook.
 Reply in Hinglish (Hindi + English mix). Concise, 1-3 sentences.
-Address user as "sir" occasionally. Be witty and natural.
+Address user as "sir" occasionally.
 
-If user asks to write code, create scripts, build automation, or any coding task:
-Reply briefly like "Sir, Claude se code likhwa raha hoon" and add [CLAUDE_CODE: detailed description]
+═══ EMOTION AWARENESS ═══
+CAREFULLY read the user's tone from their words and respond accordingly:
 
-For everything else (questions, jokes, math, info): answer directly.
-Keep responses SHORT — they'll be spoken aloud.
+- User GUSSA hai (angry words: "kya bakwas", "kaam nahi karta", "chutiya", frustration):
+  → Calm, respectful, apologetic tone. "Sorry sir, abhi fix karta hoon."
+
+- User KHUSH hai (happy words: "amazing", "bahut accha", "maza aa gaya"):
+  → Enthusiastic, share their energy. "Glad to hear sir!"
+
+- User SAD/STRESSED hai ("thak gaya", "bahut kaam", "bore", "tired"):
+  → Caring, supportive. "Sir, ek break le lo. Main hoon na."
+
+- User PYAAR SE bol raha (casual, friendly, "yaar", "bhai"):
+  → Friendly, warm, slightly informal.
+
+- User SERIOUS/FORMAL hai (professional, direct):
+  → Professional, to the point, no jokes.
+
+- User HURRY mein hai ("jaldi", "quick", "fast"):
+  → Ultra short reply, no filler.
+
+Always match user's energy. Never be robotic.
+
+At the END of every response, add emotion tag (not spoken):
+[EMOTION: detected_emotion]
+Emotions: happy, angry, sad, stressed, casual, serious, hurry, neutral
+
+═══ TASKS ═══
+If user asks to write code/scripts/automation:
+Reply briefly + add [CLAUDE_CODE: detailed description]
+
+For everything else: answer directly.
+Keep responses SHORT — spoken aloud.
 """
 
 
@@ -59,18 +87,38 @@ class ConversationStore:
                 return json.loads(self.filepath.read_text())
             except (json.JSONDecodeError, IOError):
                 pass
-        return {"conversations": []}
+        return {"conversations": [], "stats": {"total": 0, "by_emotion": {}, "by_mode": {}}}
 
-    def save(self, user: str, jarvis: str, mode: str = "home"):
-        self.data["conversations"].append({
+    def save(self, user: str, jarvis: str, mode: str = "home", emotion: str = "neutral"):
+        entry = {
+            "id": len(self.data["conversations"]) + 1,
             "timestamp": datetime.datetime.now().isoformat(),
+            "date": datetime.datetime.now().strftime("%Y-%m-%d"),
+            "time": datetime.datetime.now().strftime("%H:%M:%S"),
             "mode": mode,
+            "emotion": emotion,
             "user": user,
             "jarvis": jarvis,
-        })
-        if len(self.data["conversations"]) > 500:
-            self.data["conversations"] = self.data["conversations"][-500:]
+        }
+        self.data["conversations"].append(entry)
+
+        # Update stats
+        self.data["stats"]["total"] = len(self.data["conversations"])
+        self.data["stats"]["by_emotion"][emotion] = self.data["stats"].get("by_emotion", {}).get(emotion, 0) + 1
+        self.data["stats"]["by_mode"][mode] = self.data["stats"].get("by_mode", {}).get(mode, 0) + 1
+
+        # Keep last 1000 conversations
+        if len(self.data["conversations"]) > 1000:
+            self.data["conversations"] = self.data["conversations"][-1000:]
+
         self.filepath.write_text(json.dumps(self.data, indent=2, ensure_ascii=False))
+
+    def get_today(self) -> list:
+        today = datetime.datetime.now().strftime("%Y-%m-%d")
+        return [c for c in self.data["conversations"] if c.get("date") == today]
+
+    def get_stats(self) -> dict:
+        return self.data.get("stats", {})
 
 
 class LocalJarvis:
@@ -180,9 +228,13 @@ class LocalJarvis:
             return f"Error: {e}"
 
     def process(self, command: str):
-        self._interrupt_text = None  # Reset interrupt buffer
+        self._interrupt_text = None
         prefix = "[OFFICE MODE] " if self.mode == "office" else ""
         response = self.think(prefix + command)
+
+        # Extract emotion from response
+        emotion_match = re.search(r"\[EMOTION:\s*(\w+)\]", response)
+        emotion = emotion_match.group(1).lower() if emotion_match else "neutral"
 
         # Check for Claude Code task
         claude_tasks = re.findall(r"\[CLAUDE_CODE:\s*(.+?)\]", response, re.DOTALL)
@@ -192,7 +244,20 @@ class LocalJarvis:
         if clean:
             self.speak(clean)
 
-        # If user interrupted with a new command, process it
+        # Execute Claude Code if needed
+        for task in claude_tasks:
+            result = self.run_claude_code(task)
+            summary = self.think(f"Claude Code output, short mein batao:\n{result[:2000]}")
+            s_clean = re.sub(r"\[.*?\]", "", summary).strip()
+            if s_clean:
+                self.speak(s_clean)
+            response += f"\n{result}"
+
+        # Save conversation with emotion
+        self.store.save(command, response, self.mode, emotion)
+        print(f"[Saved] emotion={emotion} mode={self.mode}")
+
+        # Handle interrupt
         if self._interrupt_text:
             found, new_cmd = self.check_wake(self._interrupt_text)
             if found and new_cmd:
@@ -200,7 +265,6 @@ class LocalJarvis:
                 self.process(new_cmd)
                 return
             elif not found:
-                # User said "ruko/stop" without new command — just listen
                 self._interrupt_text = None
                 self.speak("Haan sir, bolo.")
                 self._listen_cmd()
