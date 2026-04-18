@@ -14,7 +14,6 @@ import time
 import datetime
 import subprocess
 import speech_recognition as sr
-import pyttsx3
 from google import genai
 from pathlib import Path
 
@@ -29,9 +28,9 @@ if _env.exists():
 
 # ── Config ──
 GEMINI_KEY = os.environ.get("GEMINI_API_KEY", "")
-GEMINI_MODEL = "gemini-2.5-flash"
+GEMINI_MODEL = "gemini-2.0-flash"  # 2.0 = instant response, 2.5 = slow thinking
 BOT_NAME = "Jarvis"
-WAKE_WORDS = ["jarvis", "jarves", "javis", "jervis", "hello", "hey"]
+WAKE_WORDS = ["jarvis", "jarves", "javis", "jervis", "jarwis", "service"]
 CONVERSATION_FILE = Path(__file__).parent / "conversations.json"
 
 # ── Gemini Client ──
@@ -76,15 +75,6 @@ class ConversationStore:
 
 class LocalJarvis:
     def __init__(self):
-        # TTS
-        self.engine = pyttsx3.init()
-        self.engine.setProperty("rate", 175)
-        self.engine.setProperty("volume", 1.0)
-        for v in self.engine.getProperty("voices"):
-            if "daniel" in v.name.lower() or "male" in v.name.lower():
-                self.engine.setProperty("voice", v.id)
-                break
-
         # STT
         self.recognizer = sr.Recognizer()
         self.recognizer.energy_threshold = 300
@@ -98,11 +88,14 @@ class LocalJarvis:
         )
         self.store = ConversationStore(CONVERSATION_FILE)
         self.mode = "home"
+        self.muted = False
 
     def speak(self, text: str):
         print(f"\n🔊 {BOT_NAME}: {text}")
-        self.engine.say(text)
-        self.engine.runAndWait()
+        # Use macOS native 'say' command — much better voice than pyttsx3
+        # Daniel = British male (Jarvis-like), Aman = Indian English
+        subprocess.run(["say", "-v", "Daniel", "-r", "190", text],
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     def listen(self, timeout=None, phrase_limit=15) -> str | None:
         with self.mic as source:
@@ -193,6 +186,21 @@ class LocalJarvis:
             return True
         return False
 
+    def check_mute(self, text: str) -> bool:
+        """Check for mute/unmute commands."""
+        lower = text.lower()
+        if any(w in lower for w in ["mute", "chup", "so jao", "go to sleep", "meeting hai", "band karo sunna"]):
+            self.muted = True
+            self.speak("Mute mode on, sir. Jab zaroorat ho toh bolo Jarvis wake up.")
+            print(f"\n🔇 MUTED — Say 'Jarvis wake up' to unmute")
+            return True
+        if any(w in lower for w in ["wake up", "unmute", "jago", "sun", "wapas aao", "start listening"]):
+            self.muted = False
+            self.speak("I'm back, sir. Bol do kya karna hai.")
+            print(f"\n🔊 UNMUTED — Listening again")
+            return True
+        return False
+
     def run(self):
         if not GEMINI_KEY:
             print("❌ GEMINI_API_KEY not set! Add it to .env")
@@ -221,6 +229,14 @@ class LocalJarvis:
                     continue
 
                 print("[Wake word detected!]")
+
+                # Check mute/unmute first
+                if cmd and self.check_mute(cmd):
+                    continue
+
+                # If muted, only respond to unmute (already handled above)
+                if self.muted:
+                    continue
 
                 if cmd and self.check_mode(cmd):
                     self._converse()
