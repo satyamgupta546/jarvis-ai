@@ -12,6 +12,7 @@ from brain import JarvisBrain
 from tasks import parse_commands, strip_command_tags, get_commands_by_category
 from smart_home import control_device
 from services import get_weather, get_news, get_radio_url
+from office import slack_read_channel, slack_send_message, slack_search, get_project_info, get_pending_tasks
 from config import BOT_NAME, AGENT_TOKEN
 
 app = FastAPI(title=f"{BOT_NAME} AI Assistant")
@@ -91,7 +92,14 @@ async def process_command(user_text: str) -> dict:
         if result["status"] == "error":
             clean_text += f"\n({result['message']})"
 
-    # Step 3: Fetch real-time data (weather, news) and feed back to Gemini
+    # Step 2b: Execute office action commands (Slack send)
+    office_actions = [c for c in commands if c["type"] == "slack_send"]
+    for cmd in office_actions:
+        result = await asyncio.to_thread(slack_send_message, cmd["channel"], cmd["message"])
+        if result["status"] == "ok":
+            clean_text += f"\n(#{cmd['channel']} mein message bhej diya)"
+
+    # Step 3: Fetch real-time data (weather, news, Slack, projects) and feed back to Gemini
     data_results = await _fetch_data(cats["data"])
 
     # Step 4: Handle desktop agent commands
@@ -123,13 +131,21 @@ async def process_command(user_text: str) -> dict:
 
 
 async def _fetch_data(data_commands: list[dict]) -> dict:
-    """Fetch weather, news, etc. Returns combined results."""
+    """Fetch weather, news, Slack, project info, etc. Returns combined results."""
     results = {}
     for cmd in data_commands:
         if cmd["type"] == "weather":
             results["weather"] = await asyncio.to_thread(get_weather, cmd.get("city", ""))
         elif cmd["type"] == "news":
             results["news"] = await asyncio.to_thread(get_news, cmd.get("topic", ""))
+        elif cmd["type"] == "slack_read":
+            results["slack"] = await asyncio.to_thread(slack_read_channel, cmd["channel"])
+        elif cmd["type"] == "slack_search":
+            results["slack_search"] = await asyncio.to_thread(slack_search, cmd["query"])
+        elif cmd["type"] == "project_info":
+            results["project"] = get_project_info(cmd["name"])
+        elif cmd["type"] == "pending_tasks":
+            results["pending_tasks"] = get_pending_tasks()
     return results
 
 

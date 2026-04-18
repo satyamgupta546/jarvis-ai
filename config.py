@@ -42,6 +42,12 @@ TUYA_ACCESS_SECRET = os.environ.get("TUYA_ACCESS_SECRET", "")
 TUYA_REGION = "in"  # India = "in", US = "us", EU = "eu", China = "cn"
 
 # ═══════════════════════════════════════════
+# SLACK INTEGRATION
+# ═══════════════════════════════════════════
+# Create a Slack app at api.slack.com → OAuth → Bot Token
+SLACK_BOT_TOKEN = os.environ.get("SLACK_BOT_TOKEN", "")
+
+# ═══════════════════════════════════════════
 # DESKTOP AGENT (runs on MacBook)
 # ═══════════════════════════════════════════
 AGENT_TOKEN = os.environ.get("AGENT_TOKEN", "jarvis-secret-2026")

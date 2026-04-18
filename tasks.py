@@ -64,6 +64,22 @@ def parse_commands(response: str) -> list[dict]:
     if "[SYSTEM_INFO]" in response:
         commands.append({"type": "system_info"})
 
+    # ── Office / Slack ──
+    for ch in re.findall(r"\[SLACK_READ:\s*(.+?)\]", response):
+        commands.append({"type": "slack_read", "channel": ch.strip()})
+
+    for match in re.findall(r"\[SLACK_SEND:\s*(.+?),\s*(.+?)\]", response):
+        commands.append({"type": "slack_send", "channel": match[0].strip(), "message": match[1].strip()})
+
+    for q in re.findall(r"\[SLACK_SEARCH:\s*(.+?)\]", response):
+        commands.append({"type": "slack_search", "query": q.strip()})
+
+    for name in re.findall(r"\[PROJECT_INFO:\s*(.+?)\]", response):
+        commands.append({"type": "project_info", "name": name.strip()})
+
+    if "[PENDING_TASKS]" in response:
+        commands.append({"type": "pending_tasks"})
+
     return commands
 
 
@@ -85,6 +101,11 @@ def strip_command_tags(text: str) -> str:
         r"\[LIST_FILES:\s*.+?\]",
         r"\[OPEN_APP:\s*.+?\]",
         r"\[SYSTEM_INFO\]",
+        r"\[SLACK_READ:\s*.+?\]",
+        r"\[SLACK_SEND:\s*.+?,\s*.+?\]",
+        r"\[SLACK_SEARCH:\s*.+?\]",
+        r"\[PROJECT_INFO:\s*.+?\]",
+        r"\[PENDING_TASKS\]",
     ]
     for p in patterns:
         text = re.sub(p, "", text, flags=re.IGNORECASE)
@@ -94,9 +115,10 @@ def strip_command_tags(text: str) -> str:
 # ── Command categorization ──
 
 DESKTOP_TYPES = {"read_file", "list_files", "open_app", "system_info"}
-DATA_FETCH_TYPES = {"weather", "news"}  # Need server to fetch real-time data
+DATA_FETCH_TYPES = {"weather", "news", "slack_read", "slack_search", "project_info", "pending_tasks"}
 PHONE_TYPES = {"play_song", "radio", "play_store", "web_search", "open_url", "time", "timer", "reminder"}
 DEVICE_TYPES = {"device"}
+OFFICE_ACTION_TYPES = {"slack_send"}  # Actions that execute but don't return data to Gemini
 
 
 def get_commands_by_category(commands):

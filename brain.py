@@ -5,12 +5,14 @@ import threading
 from google import genai
 from config import GEMINI_API_KEY, GEMINI_MODEL, BOT_NAME
 from smart_home import get_devices_summary
+from office import get_all_projects_summary
 
 client = genai.Client(api_key=GEMINI_API_KEY)
 
 
 def build_system_prompt() -> str:
     devices = get_devices_summary()
+    projects = get_all_projects_summary()
 
     return f"""You are {BOT_NAME}, a highly intelligent AI home assistant — like Alexa but smarter, inspired by Jarvis from Iron Man.
 You are helpful, witty, and slightly formal. Address the user as "sir" occasionally.
@@ -43,6 +45,16 @@ SMART HOME DEVICES:
 TIMERS & REMINDERS (handled on phone):
 - [TIMER: seconds] — e.g. [TIMER: 300] for 5 minutes
 - [REMINDER: minutes, reminder text] — e.g. [REMINDER: 30, check the oven]
+
+OFFICE / SLACK (for work):
+- [SLACK_READ: channel_name] — read latest messages from a Slack channel
+- [SLACK_SEND: channel_name, message text] — send a message to a Slack channel
+- [SLACK_SEARCH: search query] — search across Slack messages
+- [PROJECT_INFO: project_name] — get details about a specific project
+- [PENDING_TASKS] — list all pending office tasks
+
+SATYAM'S ACTIVE PROJECTS:
+{projects}
 
 MACBOOK (when desktop agent is connected):
 - [READ_FILE: /path/to/file]
