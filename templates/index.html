@@ -301,6 +301,7 @@
     <div class="feed" id="feed"></div>
 
     <div class="footer">
+        <span id="modeLabel" style="float:left; padding:0 8px;">HOME MODE</span>
         Say "Hey Jarvis" to begin
         <span id="voiceToggle" style="float:right; color:#4fc3f7; cursor:pointer; padding:0 8px;">Voice</span>
     </div>
@@ -346,13 +347,18 @@
         const WAKE_WORD = 'jarvis';
         const CONVERSATION_TIMEOUT = 10000; // 10 seconds
         const GOODBYE_WORDS = ['thank you', 'thanks', 'goodbye', 'bye', "that's all", 'stop', 'go to sleep', 'never mind'];
+        const MODE_SWITCH_TO_OFFICE = ['switch to office', 'office mode', 'office switch', 'office karo', 'office me switch', 'office mode on'];
+        const MODE_SWITCH_TO_HOME = ['switch to home', 'home mode', 'home switch', 'home karo', 'home me switch', 'home mode on', 'normal mode'];
 
         // ── State ──
         let state = 'inactive'; // inactive | standby | listening | active | processing | speaking
+        let currentMode = 'home'; // home | office
         let ws = null;
         let recognition = null;
         let conversationTimer = null;
         let isSpeaking = false;
+
+        const modeLabel = document.getElementById('modeLabel');
 
         // ── Status display ──
         const STATUS_MAP = {
@@ -472,6 +478,18 @@
             const lower = text.toLowerCase();
             console.log(`[${state}] Heard: "${text}"`);
 
+            // ── Check for mode switch (works in any conversational state) ──
+            if (state === 'listening' || state === 'active') {
+                if (MODE_SWITCH_TO_OFFICE.some(w => lower.includes(w))) {
+                    switchMode('office');
+                    return;
+                }
+                if (MODE_SWITCH_TO_HOME.some(w => lower.includes(w))) {
+                    switchMode('home');
+                    return;
+                }
+            }
+
             if (state === 'standby') {
                 // ── STANDBY: only respond to wake word ──
                 const wakePos = lower.indexOf(WAKE_WORD);
@@ -481,30 +499,40 @@
                 let after = text.substring(wakePos + WAKE_WORD.length).trim();
                 after = after.replace(/^[,.\s]*(hey|hello|hi|okay|ok|please)?\s*/i, '').trim();
 
+                // Check for mode switch in wake command
                 if (after) {
-                    // Full command: "Hey Jarvis open YouTube"
+                    const afterLower = after.toLowerCase();
+                    if (MODE_SWITCH_TO_OFFICE.some(w => afterLower.includes(w))) {
+                        switchMode('office');
+                        return;
+                    }
+                    if (MODE_SWITCH_TO_HOME.some(w => afterLower.includes(w))) {
+                        switchMode('home');
+                        return;
+                    }
+                }
+
+                if (after) {
                     addMessage('user', after);
                     setState('processing');
-                    sendToServer(after);
+                    sendToServer(prefixMode(after));
                 } else {
-                    // Just wake word: "Hello Jarvis"
                     setState('listening');
-                    speak('Yes sir?', () => {
-                        setState('listening');
-                    });
+                    const greeting = currentMode === 'office'
+                        ? 'Yes sir, office mode active. Kya karna hai?'
+                        : 'Yes sir?';
+                    speak(greeting, () => setState('listening'));
                 }
 
             } else if (state === 'listening' || state === 'active') {
-                // ── CONVERSATION MODE: everything is a command ──
+                // ── CONVERSATION MODE ──
                 clearTimeout(conversationTimer);
 
-                // Check for goodbye
                 if (GOODBYE_WORDS.some(w => lower.includes(w))) {
                     speak("Going back to standby, sir.", () => setState('standby'));
                     return;
                 }
 
-                // Strip wake word if they said it again
                 let command = text;
                 const wp = lower.indexOf(WAKE_WORD);
                 if (wp !== -1) {
@@ -515,9 +543,35 @@
 
                 addMessage('user', command);
                 setState('processing');
-                sendToServer(command);
+                sendToServer(prefixMode(command));
             }
             // Ignore speech during processing/speaking states
+        }
+
+        // ── Mode Switching ──
+        function switchMode(mode) {
+            currentMode = mode;
+            if (mode === 'office') {
+                modeLabel.textContent = 'OFFICE MODE';
+                modeLabel.style.color = '#ffa726';
+                document.querySelector('.header h1').style.color = '#ffa726';
+                speak("Office mode activated, sir. Slack, projects, tasks — sab ready hai.", () => setState('active'));
+                addMessage('jarvis', 'Office mode ON. Slack, projects, pending tasks — sab accessible hai.');
+            } else {
+                modeLabel.textContent = 'HOME MODE';
+                modeLabel.style.color = '#1a2a3a';
+                document.querySelector('.header h1').style.color = '#4fc3f7';
+                speak("Home mode activated, sir.", () => setState('active'));
+                addMessage('jarvis', 'Home mode ON.');
+            }
+        }
+
+        function prefixMode(command) {
+            // In office mode, prepend context so Claude knows the mode
+            if (currentMode === 'office') {
+                return '[OFFICE MODE] ' + command;
+            }
+            return command;
         }
 
         // ── Voice Settings ──
