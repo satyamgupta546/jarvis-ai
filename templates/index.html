@@ -344,7 +344,7 @@
         const feed = document.getElementById('feed');
 
         // ── Config ──
-        const WAKE_WORD = 'jarvis';
+        const WAKE_WORDS = ['jarvis', 'jarves', 'javis', 'jervis', 'jarwis', 'service', 'hello', 'hey'];
         const CONVERSATION_TIMEOUT = 10000; // 10 seconds
         const GOODBYE_WORDS = ['thank you', 'thanks', 'goodbye', 'bye', "that's all", 'stop', 'go to sleep', 'never mind'];
         const MODE_SWITCH_TO_OFFICE = ['switch to office', 'office mode', 'office switch', 'office karo', 'office me switch', 'office mode on'];
@@ -491,13 +491,24 @@
             }
 
             if (state === 'standby') {
-                // ── STANDBY: only respond to wake word ──
-                const wakePos = lower.indexOf(WAKE_WORD);
-                if (wakePos === -1) return; // ignore
+                // ── STANDBY: check for any wake word ──
+                let wakePos = -1;
+                let matchedWord = '';
+                for (const w of WAKE_WORDS) {
+                    const pos = lower.indexOf(w);
+                    if (pos !== -1) {
+                        wakePos = pos;
+                        matchedWord = w;
+                        break;
+                    }
+                }
+                if (wakePos === -1) return; // No wake word found
+
+                console.log(`[wake] Triggered by: "${matchedWord}"`);
 
                 // Extract command after wake word
-                let after = text.substring(wakePos + WAKE_WORD.length).trim();
-                after = after.replace(/^[,.\s]*(hey|hello|hi|okay|ok|please)?\s*/i, '').trim();
+                let after = text.substring(wakePos + matchedWord.length).trim();
+                after = after.replace(/^[,.\s]*(hey|hello|hi|okay|ok|please|jarvis)?\s*/i, '').trim();
 
                 // Check for mode switch in wake command
                 if (after) {
