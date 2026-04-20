@@ -13,6 +13,7 @@ from tasks import parse_commands, strip_command_tags, get_commands_by_category
 from smart_home import control_device
 from services import get_weather, get_news, get_radio_url
 from office import slack_read_channel, slack_send_message, slack_search, get_project_info, get_pending_tasks
+from optimus_agent import quick_create_spr, create_collection_banner, create_masthead, list_widgets, list_requests
 from config import BOT_NAME, AGENT_TOKEN
 
 app = FastAPI(title=f"{BOT_NAME} AI Assistant")
@@ -146,6 +147,22 @@ async def _fetch_data(data_commands: list[dict]) -> dict:
             results["project"] = get_project_info(cmd["name"])
         elif cmd["type"] == "pending_tasks":
             results["pending_tasks"] = get_pending_tasks()
+        elif cmd["type"] == "create_spr":
+            results["optimus"] = await asyncio.to_thread(
+                quick_create_spr, cmd["title"], cmd.get("products", "")
+            )
+        elif cmd["type"] == "create_banner":
+            results["optimus"] = await asyncio.to_thread(
+                create_collection_banner, cmd["title"], cmd["title"], cmd.get("mode", "scroll")
+            )
+        elif cmd["type"] == "create_masthead":
+            results["optimus"] = await asyncio.to_thread(
+                create_masthead, cmd["slug"], cmd.get("variant", "primary")
+            )
+        elif cmd["type"] == "list_widgets":
+            results["optimus_widgets"] = await asyncio.to_thread(list_widgets)
+        elif cmd["type"] == "list_requests":
+            results["optimus_requests"] = await asyncio.to_thread(list_requests)
     return results
 
 

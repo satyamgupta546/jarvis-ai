@@ -68,6 +68,30 @@ def parse_commands(response: str) -> list[dict]:
     for prompt in re.findall(r"\[CLAUDE_CODE:\s*(.+?)\]", response, re.DOTALL):
         commands.append({"type": "claude_code", "prompt": prompt.strip()})
 
+    # ── Optimus Widget Creation ──
+    for match in re.findall(r"\[CREATE_SPR:\s*(.+?)\]", response):
+        parts = [p.strip() for p in match.split("|")]
+        cmd = {"type": "create_spr", "title": parts[0], "products": parts[1] if len(parts) > 1 else ""}
+        if len(parts) > 2:
+            cmd["rows"] = int(parts[2])
+        if len(parts) > 3:
+            cmd["optimized"] = parts[3].lower() == "true"
+        commands.append(cmd)
+
+    for match in re.findall(r"\[CREATE_BANNER:\s*(.+?)\]", response):
+        parts = [p.strip() for p in match.split("|")]
+        commands.append({"type": "create_banner", "title": parts[0], "mode": parts[1] if len(parts) > 1 else "scroll"})
+
+    for match in re.findall(r"\[CREATE_MASTHEAD:\s*(.+?)\]", response):
+        parts = [p.strip() for p in match.split("|")]
+        commands.append({"type": "create_masthead", "slug": parts[0], "variant": parts[1] if len(parts) > 1 else "primary"})
+
+    if "[LIST_WIDGETS]" in response:
+        commands.append({"type": "list_widgets"})
+
+    if "[LIST_REQUESTS]" in response:
+        commands.append({"type": "list_requests"})
+
     # ── Code / Project creation ──
     for match in re.findall(r"\[WRITE_FILE:\s*(.+?)\]", response):
         commands.append({"type": "write_file", "path": match.strip()})
@@ -125,6 +149,11 @@ def strip_command_tags(text: str) -> str:
         r"\[PROJECT_INFO:\s*.+?\]",
         r"\[PENDING_TASKS\]",
         r"\[CLAUDE_CODE:\s*.+?\]",
+        r"\[CREATE_SPR:\s*.+?\]",
+        r"\[CREATE_BANNER:\s*.+?\]",
+        r"\[CREATE_MASTHEAD:\s*.+?\]",
+        r"\[LIST_WIDGETS\]",
+        r"\[LIST_REQUESTS\]",
         r"\[WRITE_FILE:\s*.+?\]",
         r"\[RUN:\s*.+?\]",
         r"```(?:\w+)?\n.*?```",
@@ -137,7 +166,8 @@ def strip_command_tags(text: str) -> str:
 # ── Command categorization ──
 
 DESKTOP_TYPES = {"read_file", "list_files", "open_app", "system_info", "write_file", "run_command", "claude_code"}
-DATA_FETCH_TYPES = {"weather", "news", "slack_read", "slack_search", "project_info", "pending_tasks"}
+DATA_FETCH_TYPES = {"weather", "news", "slack_read", "slack_search", "project_info", "pending_tasks",
+                     "create_spr", "create_banner", "create_masthead", "list_widgets", "list_requests"}
 PHONE_TYPES = {"play_song", "radio", "play_store", "web_search", "open_url", "time", "timer", "reminder"}
 DEVICE_TYPES = {"device"}
 OFFICE_ACTION_TYPES = {"slack_send"}  # Actions that execute but don't return data to Gemini
