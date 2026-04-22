@@ -14,11 +14,24 @@ import time
 import datetime
 import subprocess
 import tempfile
+import struct
 import threading
 import speech_recognition as sr
-import whisper
 from groq import Groq
 from pathlib import Path
+
+# ── Audio Boost ──
+AUDIO_GAIN = 8  # Multiply audio volume by this (1 = no change, 5-10 = good for weak mics)
+
+def boost_audio(raw_data: bytes, gain: int = AUDIO_GAIN) -> bytes:
+    """Amplify raw audio samples to fix low mic volume."""
+    samples = struct.unpack(f'{len(raw_data)//2}h', raw_data)
+    boosted = []
+    for s in samples:
+        s = int(s * gain)
+        s = max(-32768, min(32767, s))  # Clamp to 16-bit range
+        boosted.append(s)
+    return struct.pack(f'{len(boosted)}h', *boosted)
 
 # ── Load .env ──
 _env = Path(__file__).parent / ".env"
@@ -102,14 +115,10 @@ class ConversationStore:
 class LocalSonic:
     def __init__(self):
         # Whisper STT
-        print(f"[{BOT_NAME}] Loading Whisper model...")
-        self.whisper_model = whisper.load_model("base")
-        print(f"[{BOT_NAME}] Whisper ready.")
-
         # Mic
         self.recognizer = sr.Recognizer()
-        self.recognizer.energy_threshold = 300
-        self.recognizer.dynamic_energy_threshold = True
+        self.recognizer.energy_threshold = 100  # Low threshold for weak MacBook mic
+        self.recognizer.dynamic_energy_threshold = False  # Fixed, no auto-adjust
         self.mic = sr.Microphone()
 
         # Chat history for Groq
@@ -138,29 +147,44 @@ class LocalSonic:
                 time.sleep(0.1)
 
     def listen(self, timeout=None, phrase_limit=15) -> str | None:
-        """Listen via mic → transcribe with Whisper (accurate)."""
+        """Listen via mic → boost volume → transcribe with Groq Whisper."""
         with self.mic as source:
             try:
                 audio = self.recognizer.listen(source, timeout=timeout, phrase_time_limit=phrase_limit)
             except sr.WaitTimeoutError:
                 return None
 
-        # Save audio to temp file for Whisper
         try:
+            # Boost audio volume (fix for weak MacBook mic)
+            raw = audio.get_raw_data()
+            boosted_raw = boost_audio(raw)
+
+            # Create boosted AudioData
+            boosted_audio = sr.AudioData(boosted_raw, audio.sample_rate, audio.sample_width)
+
+            # Save boosted audio to temp WAV
             with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
-                f.write(audio.get_wav_data())
+                f.write(boosted_audio.get_wav_data())
                 temp_path = f.name
 
-            result = self.whisper_model.transcribe(temp_path, language="en", fp16=False)
-            text = result["text"].strip()
+            # Transcribe with Groq Whisper API (cloud, fast, accurate)
+            with open(temp_path, 'rb') as f:
+                result = groq_client.audio.transcriptions.create(
+                    file=(temp_path, f.read()),
+                    model="whisper-large-v3",
+                    language="en",
+                    response_format="text",
+                )
+
             os.unlink(temp_path)
+            text = result.strip() if result else None
 
             if text:
                 print(f"\n🎤 You: {text}")
             return text if text else None
 
         except Exception as e:
-            print(f"[Whisper error] {e}")
+            print(f"[STT error] {e}")
             return None
 
     def think(self, text: str) -> str:
