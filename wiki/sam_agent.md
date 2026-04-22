@@ -1,4 +1,4 @@
-# Sonic Agent — MacBook Background Service
+# SAM Agent — MacBook Background Service
 
 ## Overview
 MacBook pe background mein chalta hai. Proactive alerts, scheduled tasks, Gmail, Sheets, error monitoring sab handle karta hai.
@@ -7,7 +7,7 @@ MacBook pe background mein chalta hai. Proactive alerts, scheduled tasks, Gmail,
 ```bash
 cd ~/Desktop/Personal/ai\ bot
 source venv/bin/activate
-python sonic_agent.py
+python sam_agent.py
 ```
 
 ## Features
@@ -31,7 +31,7 @@ python sonic_agent.py
 - Draft replies
 
 ### 4. Google Sheets
-- Service account: `sonic-bot@widget-474311.iam.gserviceaccount.com`
+- Service account: `sam-bot@widget-474311.iam.gserviceaccount.com`
 - Read any shared sheet
 - Analyze data via Groq
 - Write/append rows
@@ -53,13 +53,13 @@ python sonic_agent.py
 | `quick_remind(user_id, msg)` | Remind someone on Slack |
 
 ## Logs
-Agent events stored in `sonic_agent_logs.json`:
+Agent events stored in `sam_agent_logs.json`:
 - Agent start/stop
 - Alert checks
 - Health checks
 - Summaries generated
 
 ## Files
-- `sonic_agent.py` — Main agent script
+- `sam_agent.py` — Main agent script
 - `credentials/google-service-account.json` — Google auth
-- `sonic_agent_logs.json` — Event logs (auto-created)
+- `sam_agent_logs.json` — Event logs (auto-created)

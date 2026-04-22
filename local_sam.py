@@ -1,10 +1,10 @@
 """
 ╔══════════════════════════════════════════════╗
-║     S.O.N.I.C  LOCAL VOICE ASSISTANT       ║
+║     S.A.M  LOCAL VOICE ASSISTANT       ║
 ║  Whisper (STT) + Groq (fast) + Claude (code) ║
 ╚══════════════════════════════════════════════╝
 
-Usage:  python local_sonic.py
+Usage:  python local_sam.py
 """
 
 import os
@@ -43,10 +43,10 @@ if _env.exists():
             os.environ.setdefault(k.strip(), v.strip())
 
 # ── Config ──
-BOT_NAME = "Sonic"
+BOT_NAME = "SAM"
 GROQ_KEY = os.environ.get("GROQ_API_KEY", "")
 CLAUDE_CLI = "claude"
-WAKE_WORDS = ["sonic", "sonik", "sonic", "hey sonic"]
+WAKE_WORDS = ["sam", "sonik", "sam", "hey sam"]
 CONVERSATION_FILE = Path(__file__).parent / "conversations.json"
 
 # ── Groq Client ──
@@ -89,7 +89,7 @@ class ConversationStore:
                 pass
         return {"conversations": [], "stats": {"total": 0, "by_emotion": {}, "by_mode": {}}}
 
-    def save(self, user: str, sonic: str, mode: str = "home", emotion: str = "neutral"):
+    def save(self, user: str, sam: str, mode: str = "home", emotion: str = "neutral"):
         entry = {
             "id": len(self.data["conversations"]) + 1,
             "timestamp": datetime.datetime.now().isoformat(),
@@ -98,7 +98,7 @@ class ConversationStore:
             "mode": mode,
             "emotion": emotion,
             "user": user,
-            "sonic": sonic,
+            "sam": sam,
         }
         self.data["conversations"].append(entry)
         self.data["stats"]["total"] = len(self.data["conversations"])
@@ -112,7 +112,7 @@ class ConversationStore:
         self.filepath.write_text(json.dumps(self.data, indent=2, ensure_ascii=False))
 
 
-class LocalSonic:
+class LocalSAM:
     def __init__(self):
         # Whisper STT
         # Mic
@@ -263,7 +263,7 @@ class LocalSonic:
             pos = lower.find(w)
             if pos != -1:
                 after = text[pos + len(w):].strip()
-                after = re.sub(r"^[,.\s]*(hey|hello|hi|okay|ok|please|sonic)?\s*", "", after, flags=re.I).strip()
+                after = re.sub(r"^[,.\s]*(hey|hello|hi|okay|ok|please|sam)?\s*", "", after, flags=re.I).strip()
                 return True, after
         return False, ""
 
@@ -283,7 +283,7 @@ class LocalSonic:
         lower = text.lower()
         if any(w in lower for w in ["mute", "chup", "so jao", "go to sleep", "meeting hai"]):
             self.muted = True
-            self.speak("Mute mode on, sir. Sonic wake up bolna jab zaroorat ho.")
+            self.speak("Mute mode on, sir. SAM wake up bolna jab zaroorat ho.")
             print(f"\n🔇 MUTED")
             return True
         if any(w in lower for w in ["wake up", "unmute", "jago", "sun", "wapas aao"]):
@@ -379,4 +379,4 @@ class LocalSonic:
 
 
 if __name__ == "__main__":
-    LocalSonic().run()
+    LocalSAM().run()

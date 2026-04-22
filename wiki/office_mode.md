@@ -1,10 +1,10 @@
 # Office Mode
 
 ## Overview
-Sonic ka work mode — Slack, projects, tasks, aur coding ke liye.
+SAM ka work mode — Slack, projects, tasks, aur coding ke liye.
 
 ## Activation
-- Voice: "Sonic switch to office mode" / "office mode" / "office karo"
+- Voice: "SAM switch to office mode" / "office mode" / "office karo"
 - UI: Footer mein mode label orange ho jayega
 
 ## Deactivation
@@ -26,7 +26,7 @@ Sonic ka work mode — Slack, projects, tasks, aur coding ke liye.
 - Bot scopes: `channels:history`, `channels:read`, `chat:write`, `search:read`, `users:read`
 
 ### 2. Project Knowledge
-Sonic ko 10 projects ki info embedded hai. User bole toh project status, tech stack, path sab bata sakta hai.
+SAM ko 10 projects ki info embedded hai. User bole toh project status, tech stack, path sab bata sakta hai.
 
 | Command | Tag |
 |---------|-----|
@@ -41,7 +41,7 @@ Slack se tracked tasks. User bole "kya pending hai" toh list dikha de.
 | "Mere pending tasks batao" | `[PENDING_TASKS]` |
 
 ### 4. Optimus Widget Creation
-Manoj ki jagah Sonic widgets banata hai via Optimus API.
+Manoj ki jagah SAM widgets banata hai via Optimus API.
 
 See: [optimus_integration.md](optimus_integration.md)
 

@@ -1,11 +1,11 @@
 """
 ╔══════════════════════════════════════════════╗
-║        S.O.N.I.C  MACBOOK  AGENT             ║
+║        S.A.M  MACBOOK  AGENT             ║
 ║  Proactive Alerts | Scheduler | Gmail        ║
 ║  Sheet Analysis | Error Monitor | Quick Acts ║
 ╚══════════════════════════════════════════════╝
 
-Usage:  python sonic_agent.py
+Usage:  python sam_agent.py
 Runs in background on MacBook. Ctrl+C to stop.
 """
 
@@ -33,11 +33,11 @@ if _env.exists():
             os.environ.setdefault(k.strip(), v.strip())
 
 # ── Config ──
-BOT_NAME = "Sonic"
+BOT_NAME = "SAM"
 GROQ_KEY = os.environ.get("GROQ_API_KEY", "")
 SLACK_TOKEN = os.environ.get("SLACK_BOT_TOKEN", "")
 GOOGLE_CREDS = Path(__file__).parent / "credentials" / "google-service-account.json"
-LOGS_FILE = Path(__file__).parent / "sonic_agent_logs.json"
+LOGS_FILE = Path(__file__).parent / "sam_agent_logs.json"
 
 # ── Groq (for summarization) ──
 groq_client = Groq(api_key=GROQ_KEY) if GROQ_KEY else None

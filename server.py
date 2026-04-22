@@ -1,4 +1,4 @@
-"""Sonic Web Server - Handles everything: phone UI, smart home, data fetching, desktop agent."""
+"""SAM Web Server - Handles everything: phone UI, smart home, data fetching, desktop agent."""
 
 import asyncio
 import json
@@ -8,7 +8,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Query
 from fastapi.responses import HTMLResponse
 
 BASE_DIR = Path(__file__).parent
-from brain import SonicBrain
+from brain import SAMBrain
 from tasks import parse_commands, strip_command_tags, get_commands_by_category
 from smart_home import control_device
 from services import get_weather, get_news, get_radio_url
@@ -19,12 +19,12 @@ from config import BOT_NAME, AGENT_TOKEN
 app = FastAPI(title=f"{BOT_NAME} AI Assistant")
 
 # Lazy init — don't crash on startup
-brain: SonicBrain | None = None
+brain: SAMBrain | None = None
 
-def get_brain() -> SonicBrain:
+def get_brain() -> SAMBrain:
     global brain
     if brain is None:
-        brain = SonicBrain()
+        brain = SAMBrain()
     return brain
 
 # ── Desktop Agent state ──

@@ -1,4 +1,4 @@
-"""Sonic Smart Home Controller - Tuya/SmartLife device control"""
+"""SAM Smart Home Controller - Tuya/SmartLife device control"""
 
 import json
 import os

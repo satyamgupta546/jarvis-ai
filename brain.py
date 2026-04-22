@@ -1,4 +1,4 @@
-"""Sonic AI Brain - Hybrid: Groq (voice) + Claude Code CLI (coding)"""
+"""SAM AI Brain - Hybrid: Groq (voice) + Claude Code CLI (coding)"""
 
 import time
 import threading
@@ -95,7 +95,7 @@ CODE & AUTOMATION (handled by Claude Code CLI on MacBook):
 """
 
 
-class SonicBrain:
+class SAMBrain:
     def __init__(self):
         self.model_name = GEMINI_MODEL
         self._system_prompt = build_system_prompt()

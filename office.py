@@ -1,4 +1,4 @@
-"""Sonic Office Module - Slack integration + Project knowledge"""
+"""SAM Office Module - Slack integration + Project knowledge"""
 
 import json
 import urllib.request

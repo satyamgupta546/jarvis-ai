@@ -1,5 +1,5 @@
 {
-    "agent_name": "Sonic Agent",
+    "agent_name": "SAM Agent",
     "version": "1.0",
 
     "schedule": {
@@ -18,7 +18,7 @@
     },
 
     "google_sheets": {
-        "service_account_email": "sonic-bot@widget-474311.iam.gserviceaccount.com",
+        "service_account_email": "sam-bot@widget-474311.iam.gserviceaccount.com",
         "credentials_path": "credentials/google-service-account.json",
         "scopes": [
             "https://www.googleapis.com/auth/spreadsheets",
@@ -44,7 +44,7 @@
     },
 
     "logging": {
-        "file": "sonic_agent_logs.json",
+        "file": "sam_agent_logs.json",
         "max_events": 200
     }
 }

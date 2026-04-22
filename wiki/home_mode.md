@@ -1,7 +1,7 @@
 # Home Mode
 
 ## Overview
-Sonic ka default mode — personal assistant for everyday tasks.
+SAM ka default mode — personal assistant for everyday tasks.
 
 ## Activation
 Default mode. Ya bolo: "switch to home mode" / "normal mode"
@@ -71,7 +71,7 @@ Default mode. Ya bolo: "switch to home mode" / "normal mode"
 | "India cricket score" | `[WEB_SEARCH: India cricket score live]` |
 
 ### 8. General Knowledge
-No tags needed — Sonic answers directly:
+No tags needed — SAM answers directly:
 - Math: "100 ka 18% GST?"
 - Jokes: "Ek joke sunao"
 - Translation: "Hello ko Japanese mein kya bolte hain?"
@@ -81,7 +81,7 @@ No tags needed — Sonic answers directly:
 ---
 
 ## Routines
-| Trigger | What Sonic does |
+| Trigger | What SAM does |
 |---------|-----------------|
 | "Good morning" | Weather + News + Lights on |
 | "Good night" | All lights/fans off |

@@ -1,11 +1,11 @@
 """
 ╔══════════════════════════════════════════════╗
-║          S.O.N.I.C  AI  ASSISTANT          ║
+║          S.A.M  AI  ASSISTANT          ║
 ║     Smart Omni-Network Intelligence Core     ║
 ╚══════════════════════════════════════════════╝
 
 Cloud-hosted AI assistant.
-Open the URL on your phone → say "Hey Sonic" → talk.
+Open the URL on your phone → say "Hey SAM" → talk.
 
 Usage:
     python main.py
@@ -21,11 +21,11 @@ def main():
         sys.exit(1)
 
     print("╔══════════════════════════════════════════════╗")
-    print("║          S.O.N.I.C  AI  ASSISTANT          ║")
+    print("║          S.A.M  AI  ASSISTANT          ║")
     print("╚══════════════════════════════════════════════╝")
     print(f"\n  Server: http://0.0.0.0:{SERVER_PORT}")
     print(f"  Open this URL on your phone (same WiFi)")
-    print(f"  Then just say: 'Hey Sonic'\n")
+    print(f"  Then just say: 'Hey SAM'\n")
 
     uvicorn.run(
         "server:app",

@@ -20,7 +20,7 @@ Saari conversations store hoti hain with emotion, mode, timestamp — JSON file 
       "mode": "office",
       "emotion": "serious",
       "user": "pending tasks batao",
-      "sonic": "Sir, 8 pending tasks hain. Sabse important Diksha ka AMS automation hai."
+      "sam": "Sir, 8 pending tasks hain. Sabse important Diksha ka AMS automation hai."
     }
   ],
   "stats": {
@@ -51,7 +51,7 @@ Saari conversations store hoti hain with emotion, mode, timestamp — JSON file 
 | mode | string | "home" or "office" |
 | emotion | string | Detected emotion of user |
 | user | string | What user said |
-| sonic | string | Full Sonic response (including tags) |
+| sam | string | Full SAM response (including tags) |
 
 ### Emotions Tracked
 | Emotion | Trigger Examples |
@@ -79,10 +79,10 @@ Saari conversations store hoti hain with emotion, mode, timestamp — JSON file 
 ## Methods (ConversationStore class)
 | Method | Description |
 |--------|-------------|
-| `save(user, sonic, mode, emotion)` | Save a conversation entry |
+| `save(user, sam, mode, emotion)` | Save a conversation entry |
 | `get_today()` | Get all conversations from today |
 | `get_stats()` | Get aggregated stats |
 
 ## Files
-- `local_sonic.py` — ConversationStore class
+- `local_sam.py` — ConversationStore class
 - `conversations.json` — Data file (auto-created)

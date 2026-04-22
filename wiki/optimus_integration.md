@@ -1,7 +1,7 @@
 # Optimus Integration
 
 ## Overview
-Sonic creates homepage widgets on ApnaMart app via Optimus API.
+SAM creates homepage widgets on ApnaMart app via Optimus API.
 Replaces manual Maker (Manoj) workflow.
 
 ## Credentials

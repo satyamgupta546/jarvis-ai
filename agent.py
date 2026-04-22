@@ -1,7 +1,7 @@
 """
 ╔══════════════════════════════════════════════╗
 ║       J.A.R.V.I.S  DESKTOP  AGENT           ║
-║    Run this on your MacBook to give Sonic   ║
+║    Run this on your MacBook to give SAM   ║
 ║    access to files, apps, and system info.   ║
 ╚══════════════════════════════════════════════╝
 
@@ -20,7 +20,7 @@ import psutil
 import websockets
 
 # ── Config ──
-AGENT_TOKEN = "sonic-secret-2026"
+AGENT_TOKEN = "sam-secret-2026"
 DEFAULT_SERVER = "ws://localhost:8000"
 
 # Safety: max file size to read (500KB)
@@ -272,7 +272,7 @@ def get_system_info(request_id: str) -> dict:
 
 
 async def main(server_url: str):
-    """Connect to Sonic server and handle commands."""
+    """Connect to SAM server and handle commands."""
     ws_url = f"{server_url}/ws/agent?token={AGENT_TOKEN}"
 
     print("╔══════════════════════════════════════════════╗")
@@ -283,7 +283,7 @@ async def main(server_url: str):
     while True:
         try:
             async with websockets.connect(ws_url) as ws:
-                print("  ✓ Connected to Sonic server!")
+                print("  ✓ Connected to SAM server!")
                 print("  MacBook is now accessible. Waiting for commands...\n")
 
                 async for message in ws:

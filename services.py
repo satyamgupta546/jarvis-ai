@@ -1,4 +1,4 @@
-"""Sonic External Services - Weather, News, Cricket, Stocks, Radio, etc.
+"""SAM External Services - Weather, News, Cricket, Stocks, Radio, etc.
 No API keys needed — uses free public APIs and RSS feeds.
 """
 
@@ -14,7 +14,7 @@ def get_weather(city: str = "") -> dict:
     city = city or DEFAULT_CITY
     try:
         url = f"https://wttr.in/{urllib.parse.quote(city)}?format=j1"
-        req = urllib.request.Request(url, headers={"User-Agent": "Sonic/1.0"})
+        req = urllib.request.Request(url, headers={"User-Agent": "SAM/1.0"})
         data = json.loads(urllib.request.urlopen(req, timeout=10).read())
 
         current = data["current_condition"][0]
@@ -49,7 +49,7 @@ def get_news(topic: str = "", count: int = 5) -> dict:
         else:
             url = "https://news.google.com/rss?hl=en-IN&gl=IN&ceid=IN:en"
 
-        req = urllib.request.Request(url, headers={"User-Agent": "Sonic/1.0"})
+        req = urllib.request.Request(url, headers={"User-Agent": "SAM/1.0"})
         data = urllib.request.urlopen(req, timeout=10).read()
         root = ET.fromstring(data)
         items = root.findall(".//item")[:count]

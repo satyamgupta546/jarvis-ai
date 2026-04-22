@@ -1,5 +1,5 @@
 {
-    "wake_words": ["sonic", "sonik", "hey sonic"],
+    "wake_words": ["sam", "sonik", "hey sam"],
 
     "interrupt_words": ["ruko", "ruk", "bas", "stop", "wait", "hold on", "ek minute", "sun", "chup"],
 

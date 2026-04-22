@@ -1,4 +1,4 @@
-"""Sonic Task Parser - Extracts all command tags from AI responses."""
+"""SAM Task Parser - Extracts all command tags from AI responses."""
 
 import re
 import datetime
