@@ -4,3 +4,15 @@ __pycache__/
 .env
 .claude/
 credentials/
+
+# SAM MCP sensitive files
+sam-mcp/configs/tokens.json
+sam-mcp/configs/users.json
+sam-mcp/configs/samaan.json
+sam-mcp/configs/audit_log.json
+sam-mcp/configs/processed_requests.json
+sam-mcp/test_multimedia.jpg
+
+# Admin UI
+sam-mcp-admin/node_modules/
+sam-mcp-admin/dist/
